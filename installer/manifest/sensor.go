@@ -16,6 +16,7 @@ func kubernetesSensorBinaryPath(config *Config) string {
 	return getBinaryPath(config, "/stackrox/kubernetes", "/stackrox/bin/kubernetes-sensor")
 }
 
+
 type SensorGenerator struct{}
 
 func (g SensorGenerator) Name() string {
@@ -84,7 +85,7 @@ clusterConfig:
 
 func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 	trueVar := true
-	envVars := []v1.EnvVar{{
+	sensorEnvVars := []v1.EnvVar{{
 		Name:  "ROX_HOTRELOAD",
 		Value: strconv.FormatBool(m.Config.DevMode),
 	}, {
@@ -146,7 +147,7 @@ func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 						ImagePullPolicy: v1.PullAlways,
 						Command:         []string{kubernetesSensorBinaryPath(m.Config)},
 						Args:            []string{"ensure-service-certificates"},
-						Env:             envVars,
+						Env:             GetEnvVarsForContainer(m.Config, "sensor", "sensor", "crs", sensorEnvVars),
 					}, {
 						Name:            "init-tls-certs",
 						Image:           m.Config.Images.Sensor,
@@ -157,6 +158,7 @@ func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 							"--new=/run/secrets/stackrox.io/certs-new/",
 							"--destination=/run/secrets/stackrox.io/certs/",
 						},
+						Env: GetEnvVarsForContainer(m.Config, "sensor", "sensor", "init-tls-certs", []v1.EnvVar{}),
 					}},
 					Containers: []v1.Container{{
 						Name:            "sensor",
@@ -168,7 +170,7 @@ func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 							ContainerPort: 8443,
 							Protocol:      v1.ProtocolTCP,
 						}},
-						Env: envVars,
+						Env: GetEnvVarsForContainer(m.Config, "sensor", "sensor", "sensor", sensorEnvVars),
 					}},
 				},
 			},

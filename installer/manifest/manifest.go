@@ -399,3 +399,85 @@ func getBinaryPath(config *Config, singlePath, multiPath string) string {
 	}
 	return singlePath
 }
+
+// GetEnvVarsForContainer collects all applicable environment variables for a container
+// Precedence: Global < Generator < Pod < Container < Existing (highest)
+func GetEnvVarsForContainer(config *Config, generatorName, podName, containerName string, existing []v1.EnvVar) []v1.EnvVar {
+	envVarMap := make(map[string]v1.EnvVar)
+
+	// 1. Add global env vars (lowest precedence)
+	for _, envVar := range config.EnvVars.Global {
+		if isValidEnvVarName(envVar.Name) {
+			envVarMap[envVar.Name] = envVar
+		}
+	}
+
+	// 2. Add generator-specific env vars
+	if generatorVars, exists := config.EnvVars.Generators[generatorName]; exists {
+		for _, envVar := range generatorVars {
+			if isValidEnvVarName(envVar.Name) {
+				envVarMap[envVar.Name] = envVar
+			}
+		}
+	}
+
+	// 3. Add pod-specific env vars
+	if podVars, exists := config.EnvVars.Pods[podName]; exists {
+		for _, envVar := range podVars {
+			if isValidEnvVarName(envVar.Name) {
+				envVarMap[envVar.Name] = envVar
+			}
+		}
+	}
+
+	// 4. Add container-specific env vars
+	if containerVars, exists := config.EnvVars.Containers[containerName]; exists {
+		for _, envVar := range containerVars {
+			if isValidEnvVarName(envVar.Name) {
+				envVarMap[envVar.Name] = envVar
+			}
+		}
+	}
+
+	// 5. Add existing env vars (highest precedence)
+	for _, envVar := range existing {
+		envVarMap[envVar.Name] = envVar
+	}
+
+	// Convert map back to slice
+	result := make([]v1.EnvVar, 0, len(envVarMap))
+	for _, envVar := range envVarMap {
+		result = append(result, envVar)
+	}
+
+	return result
+}
+
+// isValidEnvVarName validates environment variable names and prevents override of critical system variables
+func isValidEnvVarName(name string) bool {
+	// Prevent override of critical system variables
+	protectedPrefixes := []string{
+		"ROX_",
+		"KUBERNETES_",
+		"PATH",
+		"HOME",
+		"USER",
+		"SHELL",
+		"HOSTNAME",
+		"PWD",
+	}
+
+	for _, prefix := range protectedPrefixes {
+		if strings.HasPrefix(name, prefix) {
+			log.Warnf("Skipping protected environment variable: %s", name)
+			return false
+		}
+	}
+
+	// Basic validation for Kubernetes environment variable names
+	if name == "" {
+		return false
+	}
+
+	return true
+}

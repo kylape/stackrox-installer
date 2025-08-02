@@ -166,6 +166,39 @@ func (g *CentralGenerator) createCentralEndpointsConfig() Resource {
 }
 
 func (g *CentralGenerator) createCentralDeployment(m *manifestGenerator) Resource {
+	// Build environment variables for central container
+	centralEnvVars := []v1.EnvVar{
+		{
+			Name:  "ROX_HOTRELOAD",
+			Value: strconv.FormatBool(m.Config.DevMode),
+		}, {
+			Name:  "ROX_DEVELOPMENT_BUILD",
+			Value: strconv.FormatBool(m.Config.DevMode),
+		}, {
+			Name: "POD_NAMESPACE",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		}, {
+			Name: "ROX_NAMESPACE",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					FieldPath: "metadata.namespace",
+				},
+			},
+		},
+	}
+
+	// Add ScannerV4 env var if enabled
+	if m.Config.ScannerV4 {
+		centralEnvVars = append(centralEnvVars, v1.EnvVar{
+			Name:  "ROX_SCANNER_V4",
+			Value: "true",
+		})
+	}
+
 	deployment := apps.Deployment{
 		Spec: apps.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -206,29 +239,7 @@ func (g *CentralGenerator) createCentralDeployment(m *manifestGenerator) Resourc
 							ContainerPort: 8443,
 							Protocol:      v1.ProtocolTCP,
 						}},
-						Env: []v1.EnvVar{
-							{
-								Name:  "ROX_HOTRELOAD",
-								Value: strconv.FormatBool(m.Config.DevMode),
-							}, {
-								Name:  "ROX_DEVELOPMENT_BUILD",
-								Value: strconv.FormatBool(m.Config.DevMode),
-							}, {
-								Name: "POD_NAMESPACE",
-								ValueFrom: &v1.EnvVarSource{
-									FieldRef: &v1.ObjectFieldSelector{
-										FieldPath: "metadata.namespace",
-									},
-								},
-							}, {
-								Name: "ROX_NAMESPACE",
-								ValueFrom: &v1.EnvVarSource{
-									FieldRef: &v1.ObjectFieldSelector{
-										FieldPath: "metadata.namespace",
-									},
-								},
-							},
-						},
+						Env: GetEnvVarsForContainer(m.Config, "central", "central", "central", centralEnvVars),
 					}, {
 						Name:            "nodejs",
 						Image:           m.Config.Images.Central,
@@ -238,17 +249,11 @@ func (g *CentralGenerator) createCentralDeployment(m *manifestGenerator) Resourc
 							"-c",
 							"cd /ui; npm run start",
 						},
+						Env: GetEnvVarsForContainer(m.Config, "central", "central", "nodejs", []v1.EnvVar{}),
 					}},
 				},
 			},
 		},
-	}
-
-	if m.Config.ScannerV4 {
-		deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, v1.EnvVar{
-			Name:  "ROX_SCANNER_V4",
-			Value: "true",
-		})
 	}
 
 	trueBool := true

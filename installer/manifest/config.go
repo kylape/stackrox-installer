@@ -8,6 +8,7 @@ import (
 
 	"github.com/stackrox/rox/pkg/utils"
 	"gopkg.in/yaml.v3"
+	v1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -15,16 +16,24 @@ const (
 	localDbImage       = "localhost:5001/stackrox/db:latest"
 )
 
+type EnvVarConfig struct {
+	Global     []v1.EnvVar            `yaml:"global"`
+	Generators map[string][]v1.EnvVar `yaml:"generators"`
+	Pods       map[string][]v1.EnvVar `yaml:"pods"`
+	Containers map[string][]v1.EnvVar `yaml:"containers"`
+}
+
 type Config struct {
-	Action               string `yaml:"action"`
-	ApplyNetworkPolicies bool   `yaml:"applyNetworkPolicies"`
-	CRS                  CRS    `yaml:"crs"`
-	CertPath             string `yaml:"certPath"`
-	DevMode              bool   `yaml:"devMode"`
-	Images               Images `yaml:"images"`
-	ImageArchitecture    string `yaml:"imageArchitecture"`
-	Namespace            string `yaml:"namespace"`
-	ScannerV4            bool   `yaml:"scannerV4"`
+	Action               string       `yaml:"action"`
+	ApplyNetworkPolicies bool         `yaml:"applyNetworkPolicies"`
+	CRS                  CRS          `yaml:"crs"`
+	CertPath             string       `yaml:"certPath"`
+	DevMode              bool         `yaml:"devMode"`
+	EnvVars              EnvVarConfig `yaml:"envVars"`
+	Images               Images       `yaml:"images"`
+	ImageArchitecture    string       `yaml:"imageArchitecture"`
+	Namespace            string       `yaml:"namespace"`
+	ScannerV4            bool         `yaml:"scannerV4"`
 }
 
 type CRS struct {
@@ -52,6 +61,12 @@ var DefaultConfig Config = Config{
 	ApplyNetworkPolicies: false,
 	CertPath:             "./certs",
 	ImageArchitecture:    "single",
+	EnvVars: EnvVarConfig{
+		Global:     []v1.EnvVar{},
+		Generators: make(map[string][]v1.EnvVar),
+		Pods:       make(map[string][]v1.EnvVar),
+		Containers: make(map[string][]v1.EnvVar),
+	},
 	Images: Images{
 		AdmissionControl: localStackroxImage,
 		Sensor:           localStackroxImage,
