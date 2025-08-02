@@ -15,6 +15,7 @@ func TestDefaultConfig(t *testing.T) {
 		DevMode:              false,
 		ApplyNetworkPolicies: false,
 		CertPath:             "./certs",
+		ImageArchitecture:    "single",
 		Images: Images{
 			AdmissionControl: localStackroxImage,
 			Sensor:           localStackroxImage,

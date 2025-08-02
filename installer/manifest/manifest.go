@@ -391,3 +391,11 @@ func hotloadCommand(cmd string, c *Config) []string {
 	}
 	return []string{cmd}
 }
+
+// getBinaryPath returns the correct binary path based on image architecture
+func getBinaryPath(config *Config, singlePath, multiPath string) string {
+	if config.ImageArchitecture == "multi" {
+		return multiPath
+	}
+	return singlePath
+}

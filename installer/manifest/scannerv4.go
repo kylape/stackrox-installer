@@ -12,6 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Binary path helper for scanner v4
+func scannerV4BinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/scanner-v4", "/stackrox/bin/scanner-v4")
+}
+
 type ScannerV4Generator struct{}
 
 func (g ScannerV4Generator) Name() string {
@@ -181,7 +186,7 @@ func (g *ScannerV4Generator) genScannerV4Deployment(name string, replicaCount in
 						Name:  name,
 						Image: m.Config.Images.ScannerV4,
 						Command: []string{
-							"/stackrox/scanner-v4",
+							scannerV4BinaryPath(m.Config),
 							"--conf=/etc/scanner/config.yaml",
 						},
 						Ports: []v1.ContainerPort{{

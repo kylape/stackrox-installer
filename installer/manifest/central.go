@@ -15,6 +15,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Binary path helpers for central components
+func centralBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/central", "/stackrox/central")
+}
+
+func migratorBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/bin/migrator", "/stackrox/bin/migrator")
+}
+
 type CentralGenerator struct{}
 
 func (g CentralGenerator) Name() string {
@@ -185,13 +194,13 @@ func (g *CentralGenerator) createCentralDeployment(m *manifestGenerator) Resourc
 						Name:            "migrator",
 						Image:           m.Config.Images.Central,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         []string{"/stackrox/bin/migrator"},
+						Command:         []string{migratorBinaryPath(m.Config)},
 					}},
 					Containers: []v1.Container{{
 						Name:            "central",
 						Image:           m.Config.Images.Central,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         hotloadCommand("/stackrox/central", m.Config),
+						Command:         hotloadCommand(centralBinaryPath(m.Config), m.Config),
 						Ports: []v1.ContainerPort{{
 							Name:          "api",
 							ContainerPort: 8443,

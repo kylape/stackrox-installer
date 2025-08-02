@@ -9,6 +9,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Binary path helper for config controller
+func configControllerBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/config-controller", "/stackrox/bin/config-controller")
+}
+
 type ConfigControllerGenerator struct{}
 
 func (g ConfigControllerGenerator) Name() string {
@@ -65,7 +70,7 @@ func (g *ConfigControllerGenerator) genConfigControllerDeployment(m *manifestGen
 					Containers: []v1.Container{{
 						Name:    "config-controller",
 						Image:   m.Config.Images.ConfigController,
-						Command: []string{"/stackrox/config-controller"},
+						Command: []string{configControllerBinaryPath(m.Config)},
 						Env: []v1.EnvVar{
 							{
 								Name: "POD_NAMESPACE",

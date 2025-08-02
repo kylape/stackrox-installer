@@ -12,6 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Binary path helper for scanner
+func scannerBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/scanner", "/stackrox/bin/scanner")
+}
+
 type ScannerGenerator struct{}
 
 func (g ScannerGenerator) Name() string {
@@ -132,7 +137,7 @@ func (g *ScannerGenerator) genScannerDeployment(m *manifestGenerator) Resource {
 					Containers: []v1.Container{{
 						Name:    "scanner",
 						Image:   m.Config.Images.Scanner,
-						Command: []string{"/stackrox/scanner"},
+						Command: []string{scannerBinaryPath(m.Config)},
 						Ports: []v1.ContainerPort{{
 							Name:          "https",
 							ContainerPort: 8080,

@@ -11,6 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Binary path helpers for sensor components
+func kubernetesSensorBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/kubernetes", "/stackrox/bin/kubernetes-sensor")
+}
+
 type SensorGenerator struct{}
 
 func (g SensorGenerator) Name() string {
@@ -139,14 +144,14 @@ func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 						Name:            "crs",
 						Image:           m.Config.Images.Sensor,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         []string{"/stackrox/kubernetes"},
+						Command:         []string{kubernetesSensorBinaryPath(m.Config)},
 						Args:            []string{"ensure-service-certificates"},
 						Env:             envVars,
 					}, {
 						Name:            "init-tls-certs",
 						Image:           m.Config.Images.Sensor,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         []string{"/stackrox/init-tls-certs"},
+						Command:         []string{initTlsCertsBinaryPath(m.Config)},
 						Args: []string{
 							"--legacy=/run/secrets/stackrox.io/certs-legacy/",
 							"--new=/run/secrets/stackrox.io/certs-new/",
@@ -157,7 +162,7 @@ func (g SensorGenerator) applySensorDeployment(m *manifestGenerator) Resource {
 						Name:            "sensor",
 						Image:           m.Config.Images.Sensor,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         hotloadCommand("/stackrox/kubernetes", m.Config),
+						Command:         hotloadCommand(kubernetesSensorBinaryPath(m.Config), m.Config),
 						Ports: []v1.ContainerPort{{
 							Name:          "api",
 							ContainerPort: 8443,

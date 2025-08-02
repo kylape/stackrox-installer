@@ -12,6 +12,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
+// Binary path helpers for admission control components
+func initTlsCertsBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/init-tls-certs", "/stackrox/bin/init-tls-certs")
+}
+
+func admissionControlBinaryPath(config *Config) string {
+	return getBinaryPath(config, "/stackrox/admission-control", "/stackrox/bin/admission-control")
+}
+
 type AdmissionControlGenerator struct{}
 
 func (g AdmissionControlGenerator) Name() string {
@@ -163,7 +172,7 @@ func (g AdmissionControlGenerator) applyAdmissionControlDeployment(m *manifestGe
 						Name:            "init-tls-certs",
 						Image:           m.Config.Images.Sensor,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         []string{"/stackrox/init-tls-certs"},
+						Command:         []string{initTlsCertsBinaryPath(m.Config)},
 						Args: []string{
 							"--legacy=/run/secrets/stackrox.io/certs-legacy/",
 							"--new=/run/secrets/stackrox.io/certs-new/",
@@ -174,7 +183,7 @@ func (g AdmissionControlGenerator) applyAdmissionControlDeployment(m *manifestGe
 						Name:            "admission-control",
 						Image:           m.Config.Images.AdmissionControl,
 						ImagePullPolicy: v1.PullAlways,
-						Command:         []string{"/stackrox/admission-control"},
+						Command:         []string{admissionControlBinaryPath(m.Config)},
 						Ports: []v1.ContainerPort{{
 							Name:          "webhook",
 							ContainerPort: 8443,
