@@ -18,6 +18,30 @@ func log(msg string, params ...interface{}) {
 	fmt.Printf(msg+"\n", params...)
 }
 
+func printHelp() {
+	fmt.Println("StackRox Installer")
+	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  installer [options] <action> <set>")
+	fmt.Println()
+	fmt.Println("Actions:")
+	fmt.Println("  apply   - Apply manifests to Kubernetes cluster")
+	fmt.Println("  export  - Export manifests to stdout")
+	fmt.Println()
+	fmt.Println("Sets:")
+	fmt.Println("  central         - Central components")
+	fmt.Println("  securedcluster  - Secured cluster components")
+	fmt.Println("  crs             - Custom resource definitions")
+	fmt.Println()
+	fmt.Println("Options:")
+	flag.PrintDefaults()
+	fmt.Println()
+	fmt.Println("Examples:")
+	fmt.Println("  installer apply central")
+	fmt.Println("  installer export securedcluster")
+	fmt.Println("  installer -conf config.yaml apply crs")
+}
+
 func main() {
 	configPath := flag.String("conf", "./installer.yaml", "Path to installer's configuration file.")
 	// kubeconfig = flag.String("kubeconfig", os.Getenv("KUBECONFIG"), "(optional) absolute path to the kubeconfig file")
@@ -27,6 +51,11 @@ func main() {
 
 	action := flag.Arg(0)
 	generatorSet := flag.Arg(1)
+
+	if action == "" || generatorSet == "" {
+		printHelp()
+		return
+	}
 
 	var config *rest.Config
 	var err error
