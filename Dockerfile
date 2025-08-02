@@ -38,6 +38,9 @@ COPY --from=builder /app/installer /usr/local/bin/installer
 # Copy default configuration
 COPY installer.yaml /app/installer.yaml
 
+# Create config directory for mounted configs
+RUN mkdir -p /app/config
+
 # Set ownership
 RUN chown -R installer:installer /app
 

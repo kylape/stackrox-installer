@@ -26,10 +26,21 @@ Implement a GitHub Actions workflow that provides comprehensive CI/CD pipeline w
   3. `docker` - Build and push container image
 
 ### Container Image Design
-- **Base Image**: Use minimal alpine or distroless image
+- **Base Image**: Use minimal alpine image with ca-certificates
 - **Binary**: Include compiled installer binary at `/usr/local/bin/installer`
 - **Entrypoint**: Configure to run installer directly
-- **Usage**: `docker run <image> export securedcluster`
+- **Configuration**: Support both default config and custom mounted configs
+- **Usage Examples**:
+  ```bash
+  # Use default config
+  docker run <image> export securedcluster
+  
+  # Use custom config via volume mount
+  docker run -v /path/to/my-config.yaml:/app/config/installer.yaml <image> -conf /app/config/installer.yaml export securedcluster
+  
+  # Use custom config via bind mount
+  docker run -v $(pwd)/my-installer.yaml:/app/my-config.yaml <image> -conf /app/my-config.yaml export securedcluster
+  ```
 
 ### Key Components
 
