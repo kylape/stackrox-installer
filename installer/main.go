@@ -57,33 +57,6 @@ func main() {
 		return
 	}
 
-	var config *rest.Config
-	var err error
-
-	kubeconfig := os.Getenv("KUBECONFIG")
-
-	if kubeconfig == "" {
-		kubeconfig = *kubeconfigFlag
-	}
-
-	if kubeconfig == "" {
-		config, err = rest.InClusterConfig()
-		if err != nil {
-			home := homedir.HomeDir()
-			config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(home, ".kube", "config"))
-			if err != nil {
-				println(err.Error())
-				return
-			}
-		}
-	} else {
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			println(err.Error())
-			return
-		}
-	}
-
 	cfg, err := manifest.ReadConfig(*configPath)
 	if err != nil {
 		fmt.Printf("failed to load configuration %q: %v\n", *configPath, err)
@@ -92,10 +65,40 @@ func main() {
 
 	cfg.Action = action
 
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		println(err.Error())
-		return
+	var config *rest.Config
+	var clientset *kubernetes.Clientset
+
+	// Only initialize Kubernetes client for apply operations
+	if action == "apply" {
+		kubeconfig := os.Getenv("KUBECONFIG")
+
+		if kubeconfig == "" {
+			kubeconfig = *kubeconfigFlag
+		}
+
+		if kubeconfig == "" {
+			config, err = rest.InClusterConfig()
+			if err != nil {
+				home := homedir.HomeDir()
+				config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(home, ".kube", "config"))
+				if err != nil {
+					println(err.Error())
+					return
+				}
+			}
+		} else {
+			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+			if err != nil {
+				println(err.Error())
+				return
+			}
+		}
+
+		clientset, err = kubernetes.NewForConfig(config)
+		if err != nil {
+			println(err.Error())
+			return
+		}
 	}
 
 	ctx := context.Background()

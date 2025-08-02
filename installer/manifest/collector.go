@@ -116,6 +116,85 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 							ReadOnly:  true,
 						}},
 					}, {
+						Name:            "compliance",
+						Image:           m.Config.Images.Sensor,
+						ImagePullPolicy: v1.PullAlways,
+						Command:         []string{"stackrox/compliance"},
+						Ports: []v1.ContainerPort{{
+							Name:          "monitoring",
+							ContainerPort: 9091,
+							Protocol:      v1.ProtocolTCP,
+						}},
+						SecurityContext: &v1.SecurityContext{
+							RunAsUser:              &[]int64{0}[0],
+							ReadOnlyRootFilesystem: &trueBool,
+						},
+						Env: []v1.EnvVar{{
+							Name: "ROX_MEMLIMIT",
+							ValueFrom: &v1.EnvVarSource{
+								ResourceFieldRef: &v1.ResourceFieldSelector{
+									Resource: "limits.memory",
+								},
+							},
+						}, {
+							Name: "GOMAXPROCS",
+							ValueFrom: &v1.EnvVarSource{
+								ResourceFieldRef: &v1.ResourceFieldSelector{
+									Resource: "limits.cpu",
+								},
+							},
+						}, {
+							Name: "POD_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									FieldPath: "metadata.name",
+								},
+							},
+						}, {
+							Name: "POD_NAMESPACE",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									FieldPath: "metadata.namespace",
+								},
+							},
+						}, {
+							Name:  "ROX_CALL_NODE_INVENTORY_ENABLED",
+							Value: "false",
+						}, {
+							Name:  "ROX_METRICS_PORT",
+							Value: ":9091",
+						}, {
+							Name: "ROX_NODE_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									APIVersion: "v1",
+									FieldPath:  "spec.nodeName",
+								},
+							},
+						}, {
+							Name:  "ROX_ADVERTISED_ENDPOINT",
+							Value: "sensor:443",
+						}, {
+							Name:  "ROX_NODE_SCANNING_ENDPOINT",
+							Value: "scanner:8080",
+						}},
+						VolumeMounts: []v1.VolumeMount{{
+							Name:      "etc-ssl",
+							MountPath: "/etc/ssl",
+						}, {
+							Name:      "etc-pki-volume",
+							MountPath: "/etc/pki/ca-trust",
+						}, {
+							Name:             "host-root-ro",
+							MountPath:        "/host",
+							ReadOnly:         true,
+							MountPropagation: &hostToContainer,
+						}, {
+							Name:      "certs",
+							MountPath: "/run/secrets/stackrox.io/certs",
+							ReadOnly:  true,
+						}},
+					}, {
 						Name:            "vsock-listener",
 						Image:           m.Config.Images.VSOCKListener,
 						ImagePullPolicy: v1.PullAlways,
@@ -191,6 +270,23 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 								SecretName:  "tls-cert-collector",
 								Optional:    &trueBool,
 							},
+						},
+					}, {
+						Name: "host-root-ro",
+						VolumeSource: v1.VolumeSource{
+							HostPath: &v1.HostPathVolumeSource{
+								Path: "/",
+							},
+						},
+					}, {
+						Name: "etc-ssl",
+						VolumeSource: v1.VolumeSource{
+							EmptyDir: &v1.EmptyDirVolumeSource{},
+						},
+					}, {
+						Name: "etc-pki-volume",
+						VolumeSource: v1.VolumeSource{
+							EmptyDir: &v1.EmptyDirVolumeSource{},
 						},
 					}},
 				},
