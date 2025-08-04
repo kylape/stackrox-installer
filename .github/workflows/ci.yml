@@ -61,10 +61,17 @@ jobs:
         path: bin/installer
 
   docker:
-    name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    name: Build and Push Multi-Platform Docker Image
+    runs-on: ${{ matrix.runner }}
     needs: test
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64  
+            runner: ubuntu-24.04-arm64
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -91,11 +98,11 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=sha,prefix=sha-
 
-    - name: Build and push Docker image
+    - name: Build and push Docker image for ${{ matrix.platform }}
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
