@@ -97,22 +97,9 @@ jobs:
     needs: docker
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=semver,pattern={{version}}
-          type=semver,pattern={{major}}.{{minor}}
-          type=sha,prefix=sha-
-
     - name: Test Docker image
       run: |
-        # Get the first tag from the metadata
-        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+        IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
         echo "Testing image: $IMAGE_TAG"
         
         # Test help command
