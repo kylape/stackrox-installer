@@ -35,6 +35,7 @@ type Images struct {
 	AdmissionControl string `yaml:"admissionControl"`
 	Sensor           string `yaml:"sensor"`
 	Collector        string `yaml:"collector"`
+	Compliance       string `yaml:"compliance"`
 	ConfigController string `yaml:"configController"`
 	Central          string `yaml:"central"`
 	CentralDB        string `yaml:"centralDb"`
@@ -56,6 +57,7 @@ var DefaultConfig Config = Config{
 		AdmissionControl: localStackroxImage,
 		Sensor:           localStackroxImage,
 		Collector:        localStackroxImage,
+		Compliance:       localStackroxImage,
 		ConfigController: localStackroxImage,
 		Central:          localStackroxImage,
 		Scanner:          localStackroxImage,

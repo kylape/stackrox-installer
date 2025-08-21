@@ -117,7 +117,7 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 						}},
 					}, {
 						Name:            "compliance",
-						Image:           m.Config.Images.Sensor,
+						Image:           m.Config.Images.Compliance,
 						ImagePullPolicy: v1.PullAlways,
 						Command:         []string{"stackrox/compliance"},
 						Ports: []v1.ContainerPort{{
