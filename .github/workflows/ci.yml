@@ -61,35 +61,15 @@ jobs:
         path: bin/installer
 
   docker:
-    name: Build and Push Multi-Platform Docker Image
-    runs-on: ${{ matrix.runner }}
+    name: Build and Push ARM64 Docker Image
+    runs-on: [self-hosted, ARM64]
     needs: test
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    strategy:
-      matrix:
-        include:
-          - platform: linux/amd64
-            runner: ubuntu-latest
-          - platform: linux/arm64  
-            runner: [self-hosted, ARM64]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      if: matrix.platform == 'linux/amd64'
-
-    - name: Log in to Container Registry (Docker)
-      uses: docker/login-action@v3
-      if: matrix.platform == 'linux/amd64'
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     - name: Log in to Container Registry (Podman)
-      if: matrix.platform == 'linux/arm64'
       run: |
         echo "${{ secrets.GITHUB_TOKEN }}" | podman login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
 
@@ -105,20 +85,7 @@ jobs:
           type=semver,pattern={{major}}.{{minor}}
           type=sha,prefix=sha-
 
-    - name: Build and push Docker image for ${{ matrix.platform }} (Docker)
-      uses: docker/build-push-action@v5
-      if: matrix.platform == 'linux/amd64'
-      with:
-        context: .
-        platforms: ${{ matrix.platform }}
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build and push image for ${{ matrix.platform }} (Podman)
-      if: matrix.platform == 'linux/arm64'
+    - name: Build and push ARM64 image (Podman)
       run: |
         # Create nodocker file to quiet podman emulation message
         sudo mkdir -p /etc/containers
@@ -128,7 +95,7 @@ jobs:
         TAGS="${{ steps.meta.outputs.tags }}"
         FIRST_TAG=$(echo "$TAGS" | head -n1)
         
-        podman build --platform ${{ matrix.platform }} -t "$FIRST_TAG" .
+        podman build --platform linux/arm64 -t "$FIRST_TAG" .
         
         # Tag with all metadata tags
         while IFS= read -r tag; do
