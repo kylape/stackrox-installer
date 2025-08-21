@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM docker.io/golang:1.24-alpine AS builder
 
 # Install git and ca-certificates for dependency downloads
 RUN apk add --no-cache git ca-certificates
@@ -20,7 +20,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o installer ./installer
 
 # Final stage - minimal runtime image
-FROM alpine:latest
+FROM docker.io/alpine:latest
 
 # Install ca-certificates for HTTPS calls
 RUN apk --no-cache add ca-certificates
