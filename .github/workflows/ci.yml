@@ -21,8 +21,15 @@ jobs:
     name: Test and Build
     runs-on: [self-hosted, Linux, ARM64]
     steps:
+    - name: Clean workspace
+      run: |
+        sudo rm -rf ${{ github.workspace }}/* || true
+        sudo rm -rf ${{ github.workspace }}/.* || true
+        
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        clean: true
 
     - name: Set up Go
       uses: actions/setup-go@v5
