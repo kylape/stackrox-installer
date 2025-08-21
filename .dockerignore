@@ -1,0 +1,36 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+designs/
+docs/
+
+# Build artifacts
+bin/
+*.log
+
+# Test files
+*_test.go
+test-*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Dependencies (will be downloaded during build)
+vendor/
+
+# Cloned repos for context
+stackrox-repo/
+
+# Temporary files
+*.tmp
+*.temp
