@@ -39,20 +39,18 @@ jobs:
       with:
         clean: true
 
+    - name: Clean Go cache directories
+      run: |
+        sudo rm -rf ~/.cache/go-build || true
+        sudo rm -rf ~/go/pkg/mod || true
+        sudo rm -rf /home/runner/.cache/go-build || true
+        sudo rm -rf /home/runner/go/pkg/mod || true
+        
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
 
     - name: Download dependencies
       run: go mod download
@@ -110,7 +108,7 @@ jobs:
         TAGS="${{ steps.meta.outputs.tags }}"
         FIRST_TAG=$(echo "$TAGS" | head -n1)
         
-        podman build --platform linux/arm64 -t "$FIRST_TAG" .
+        podman build --platform linux/arm64 --no-cache --pull -t "$FIRST_TAG" .
         
         # Tag with all metadata tags
         while IFS= read -r tag; do
