@@ -20,6 +20,7 @@ func TestDefaultConfig(t *testing.T) {
 			AdmissionControl: localStackroxImage,
 			Sensor:           localStackroxImage,
 			Collector:        localStackroxImage,
+			Compliance:       localStackroxImage,
 			ConfigController: localStackroxImage,
 			Central:          localStackroxImage,
 			Scanner:          localStackroxImage,
