@@ -19,7 +19,7 @@ env:
 jobs:
   test:
     name: Test and Build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
 
   docker:
     name: Build and Push ARM64 Docker Image
-    runs-on: [self-hosted, ARM64]
+    runs-on: [self-hosted, Linux, ARM64]
     needs: test
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
