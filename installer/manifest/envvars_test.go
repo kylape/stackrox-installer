@@ -6,29 +6,52 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-func TestGetEnvVarsForContainer(t *testing.T) {
-	// Create a test configuration with environment variables
+func TestGetEnvVarsForContainer_StackRoxPattern(t *testing.T) {
+	// Create a test configuration following StackRox Helm pattern
 	config := &Config{
-		EnvVars: EnvVarConfig{
-			Global: []v1.EnvVar{
-				{Name: "GLOBAL_VAR", Value: "global-value"},
-				{Name: "DEPLOYMENT_ENV", Value: "test"},
-			},
-			Generators: map[string][]v1.EnvVar{
-				"central": {
-					{Name: "CENTRAL_LOG_LEVEL", Value: "debug"},
-					{Name: "GLOBAL_VAR", Value: "generator-override"},
+		Customize: CustomizeConfig{
+			// Global env vars directly under customize.envVars
+			EnvVars: []interface{}{
+				map[string]interface{}{
+					"name":  "DEPLOYMENT_ENV",
+					"value": "test",
+				},
+				map[string]interface{}{
+					"name":  "LOG_FORMAT",
+					"value": "json",
 				},
 			},
-			Pods: map[string][]v1.EnvVar{
-				"central": {
-					{Name: "POD_MEMORY_LIMIT", Value: "8Gi"},
-				},
-			},
-			Containers: map[string][]v1.EnvVar{
-				"central": {
-					{Name: "CENTRAL_LOG_LEVEL", Value: "trace"}, // This should override generator setting
-					{Name: "CONTAINER_SPECIFIC", Value: "container-value"},
+			// Central deployment customization (true StackRox pattern)
+			Central: &DeploymentCustomization{
+				EnvVars: map[string]interface{}{
+					// Deployment-level env vars under "envVars" key
+					"envVars": []interface{}{
+						map[string]interface{}{
+							"name":  "CENTRAL_LOG_LEVEL",
+							"value": "debug",
+						},
+						map[string]interface{}{
+							"name":  "DEPLOYMENT_ENV",
+							"value": "staging", // Overrides global
+						},
+					},
+					// Container-specific env vars using /containerName syntax in same map
+					"/central": []interface{}{
+						map[string]interface{}{
+							"name":  "CENTRAL_LOG_LEVEL",
+							"value": "trace", // Overrides deployment setting
+						},
+						map[string]interface{}{
+							"name":  "CONTAINER_SPECIFIC",
+							"value": "container-value",
+						},
+					},
+					"/nodejs": []interface{}{
+						map[string]interface{}{
+							"name":  "NODE_ENV",
+							"value": "development",
+						},
+					},
 				},
 			},
 		},
@@ -49,18 +72,17 @@ func TestGetEnvVarsForContainer(t *testing.T) {
 			envMap[envVar.Name] = envVar.Value
 		}
 
-		// Test precedence rules
+		// Test precedence rules: Global < Deployment < Container-specific < Existing
 		tests := []struct {
 			name     string
 			key      string
 			expected string
 		}{
-			{"Global variable should be overridden by generator", "GLOBAL_VAR", "generator-override"},
-			{"Container variable should override generator", "CENTRAL_LOG_LEVEL", "trace"},
+			{"Global variable should be overridden by deployment", "DEPLOYMENT_ENV", "staging"},
+			{"Container variable should override deployment", "CENTRAL_LOG_LEVEL", "trace"},
 			{"Existing variable should override custom", "CONTAINER_SPECIFIC", "existing-value"},
 			{"Existing system variable should be preserved", "ROX_HOTRELOAD", "true"},
-			{"Global variable should be present", "DEPLOYMENT_ENV", "test"},
-			{"Pod-specific variable should be present", "POD_MEMORY_LIMIT", "8Gi"},
+			{"Global variable should be present", "LOG_FORMAT", "json"},
 		}
 
 		for _, tt := range tests {
@@ -73,16 +95,54 @@ func TestGetEnvVarsForContainer(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("TestContainerSpecificEnvVars", func(t *testing.T) {
+		// Test nodejs container gets its specific env vars
+		nodejsEnvVars := GetEnvVarsForContainer(config, "central", "central", "nodejs", []v1.EnvVar{})
+
+		envMap := make(map[string]string)
+		for _, envVar := range nodejsEnvVars {
+			envMap[envVar.Name] = envVar.Value
+		}
+
+		// Should have global, deployment, and nodejs-specific vars
+		expectedVars := map[string]string{
+			"DEPLOYMENT_ENV":    "staging",     // Global overridden by deployment
+			"LOG_FORMAT":        "json",        // Global
+			"CENTRAL_LOG_LEVEL": "debug",       // Deployment-specific
+			"NODE_ENV":          "development", // Container-specific
+		}
+
+		for key, expectedValue := range expectedVars {
+			if value, exists := envMap[key]; !exists {
+				t.Errorf("Expected environment variable %q to exist for nodejs container", key)
+			} else if value != expectedValue {
+				t.Errorf("Expected %q = %q for nodejs container, got %q", key, expectedValue, value)
+			}
+		}
+	})
 }
 
 func TestProtectedVariableValidation(t *testing.T) {
 	testConfig := &Config{
-		EnvVars: EnvVarConfig{
-			Global: []v1.EnvVar{
-				{Name: "ROX_PROTECTED", Value: "should-be-blocked"},
-				{Name: "KUBERNETES_SERVICE_HOST", Value: "should-be-blocked"},
-				{Name: "PATH", Value: "should-be-blocked"},
-				{Name: "CUSTOM_VAR", Value: "should-be-allowed"},
+		Customize: CustomizeConfig{
+			EnvVars: []interface{}{
+				map[string]interface{}{
+					"name":  "ROX_PROTECTED",
+					"value": "should-be-blocked",
+				},
+				map[string]interface{}{
+					"name":  "KUBERNETES_SERVICE_HOST",
+					"value": "should-be-blocked",
+				},
+				map[string]interface{}{
+					"name":  "PATH",
+					"value": "should-be-blocked",
+				},
+				map[string]interface{}{
+					"name":  "CUSTOM_VAR",
+					"value": "should-be-allowed",
+				},
 			},
 		},
 	}
@@ -115,11 +175,9 @@ func TestProtectedVariableValidation(t *testing.T) {
 
 func TestEmptyConfiguration(t *testing.T) {
 	emptyConfig := &Config{
-		EnvVars: EnvVarConfig{
-			Global:     []v1.EnvVar{},
-			Generators: make(map[string][]v1.EnvVar),
-			Pods:       make(map[string][]v1.EnvVar),
-			Containers: make(map[string][]v1.EnvVar),
+		Customize: CustomizeConfig{
+			EnvVars: []interface{}{},
+			Other:   make(map[string]*DeploymentCustomization),
 		},
 	}
 
@@ -140,36 +198,34 @@ func TestEmptyConfiguration(t *testing.T) {
 	})
 }
 
-func TestNonExistentScopes(t *testing.T) {
+func TestNonExistentDeployments(t *testing.T) {
 	config := &Config{
-		EnvVars: EnvVarConfig{
-			Global: []v1.EnvVar{
-				{Name: "GLOBAL_VAR", Value: "global-value"},
-			},
-			Generators: map[string][]v1.EnvVar{
-				"other_generator": {
-					{Name: "OTHER_VAR", Value: "other-value"},
+		Customize: CustomizeConfig{
+			EnvVars: []interface{}{
+				map[string]interface{}{
+					"name":  "GLOBAL_VAR",
+					"value": "global-value",
 				},
 			},
-			Pods: map[string][]v1.EnvVar{
-				"other_pod": {
-					{Name: "OTHER_POD_VAR", Value: "other-pod-value"},
-				},
-			},
-			Containers: map[string][]v1.EnvVar{
-				"other_container": {
-					{Name: "OTHER_CONTAINER_VAR", Value: "other-container-value"},
+			Sensor: &DeploymentCustomization{
+				EnvVars: map[string]interface{}{
+					"envVars": []interface{}{
+						map[string]interface{}{
+							"name":  "SENSOR_VAR",
+							"value": "sensor-value",
+						},
+					},
 				},
 			},
 		},
 	}
 
-	t.Run("TestNonExistentScopesOnlyReturnGlobalAndExisting", func(t *testing.T) {
+	t.Run("TestNonExistentDeploymentsOnlyReturnGlobalAndExisting", func(t *testing.T) {
 		existingEnvVars := []v1.EnvVar{
 			{Name: "EXISTING_VAR", Value: "existing-value"},
 		}
 
-		result := GetEnvVarsForContainer(config, "nonexistent_generator", "nonexistent_pod", "nonexistent_container", existingEnvVars)
+		result := GetEnvVarsForContainer(config, "nonexistent_deployment", "nonexistent_pod", "nonexistent_container", existingEnvVars)
 
 		// Convert to map for easier testing
 		envMap := make(map[string]string)
@@ -195,12 +251,73 @@ func TestNonExistentScopes(t *testing.T) {
 			}
 		}
 
-		// Should not have variables from other scopes
-		unexpectedVars := []string{"OTHER_VAR", "OTHER_POD_VAR", "OTHER_CONTAINER_VAR"}
+		// Should not have variables from other deployments
+		unexpectedVars := []string{"SENSOR_VAR"}
 		for _, unexpectedVar := range unexpectedVars {
 			if _, exists := envMap[unexpectedVar]; exists {
 				t.Errorf("Unexpected variable %q should not exist", unexpectedVar)
 			}
+		}
+	})
+}
+
+func TestEnvVarWithValueFrom(t *testing.T) {
+	config := &Config{
+		Customize: CustomizeConfig{
+			EnvVars: []interface{}{
+				map[string]interface{}{
+					"name": "POD_NAME",
+					"valueFrom": map[string]interface{}{
+						"fieldRef": map[string]interface{}{
+							"fieldPath": "metadata.name",
+						},
+					},
+				},
+				map[string]interface{}{
+					"name": "MEMORY_LIMIT",
+					"valueFrom": map[string]interface{}{
+						"resourceFieldRef": map[string]interface{}{
+							"resource": "limits.memory",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("TestValueFromFieldRef", func(t *testing.T) {
+		result := GetEnvVarsForContainer(config, "test", "test", "test", []v1.EnvVar{})
+
+		var podNameVar *v1.EnvVar
+		var memoryLimitVar *v1.EnvVar
+
+		for _, envVar := range result {
+			if envVar.Name == "POD_NAME" {
+				podNameVar = &envVar
+			}
+			if envVar.Name == "MEMORY_LIMIT" {
+				memoryLimitVar = &envVar
+			}
+		}
+
+		if podNameVar == nil {
+			t.Fatal("POD_NAME environment variable not found")
+		}
+
+		if podNameVar.ValueFrom == nil || podNameVar.ValueFrom.FieldRef == nil {
+			t.Error("POD_NAME should have valueFrom.fieldRef")
+		} else if podNameVar.ValueFrom.FieldRef.FieldPath != "metadata.name" {
+			t.Errorf("Expected fieldPath 'metadata.name', got '%s'", podNameVar.ValueFrom.FieldRef.FieldPath)
+		}
+
+		if memoryLimitVar == nil {
+			t.Fatal("MEMORY_LIMIT environment variable not found")
+		}
+
+		if memoryLimitVar.ValueFrom == nil || memoryLimitVar.ValueFrom.ResourceFieldRef == nil {
+			t.Error("MEMORY_LIMIT should have valueFrom.resourceFieldRef")
+		} else if memoryLimitVar.ValueFrom.ResourceFieldRef.Resource != "limits.memory" {
+			t.Errorf("Expected resource 'limits.memory', got '%s'", memoryLimitVar.ValueFrom.ResourceFieldRef.Resource)
 		}
 	})
 }

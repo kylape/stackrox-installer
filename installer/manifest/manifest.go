@@ -401,45 +401,62 @@ func getBinaryPath(config *Config, singlePath, multiPath string) string {
 }
 
 // GetEnvVarsForContainer collects all applicable environment variables for a container
-// Precedence: Global < Generator < Pod < Container < Existing (highest)
-func GetEnvVarsForContainer(config *Config, generatorName, podName, containerName string, existing []v1.EnvVar) []v1.EnvVar {
+// following StackRox Helm template pattern
+// Precedence: Global < Deployment < Container-specific < Existing (highest)
+func GetEnvVarsForContainer(config *Config, deploymentName, podName, containerName string, existing []v1.EnvVar) []v1.EnvVar {
 	envVarMap := make(map[string]v1.EnvVar)
 
-	// 1. Add global env vars (lowest precedence)
-	for _, envVar := range config.EnvVars.Global {
-		if isValidEnvVarName(envVar.Name) {
-			envVarMap[envVar.Name] = envVar
-		}
-	}
-
-	// 2. Add generator-specific env vars
-	if generatorVars, exists := config.EnvVars.Generators[generatorName]; exists {
-		for _, envVar := range generatorVars {
+	// 1. Add global env vars (lowest precedence) - directly under customize.envVars
+	if globalEnvVars := getEnvVarsFromInterface(config.Customize.EnvVars); globalEnvVars != nil {
+		for _, envVar := range globalEnvVars {
 			if isValidEnvVarName(envVar.Name) {
 				envVarMap[envVar.Name] = envVar
 			}
 		}
 	}
 
-	// 3. Add pod-specific env vars
-	if podVars, exists := config.EnvVars.Pods[podName]; exists {
-		for _, envVar := range podVars {
-			if isValidEnvVarName(envVar.Name) {
-				envVarMap[envVar.Name] = envVar
+	// 2. Add deployment-specific env vars
+	var deploymentCustomization *DeploymentCustomization
+	
+	// Check named deployments first
+	switch deploymentName {
+	case "central":
+		deploymentCustomization = config.Customize.Central
+	case "sensor":
+		deploymentCustomization = config.Customize.Sensor
+	case "collector":
+		deploymentCustomization = config.Customize.Collector
+	case "scanner":
+		deploymentCustomization = config.Customize.Scanner
+	default:
+		// Check in Other map for additional deployments
+		if config.Customize.Other != nil {
+			deploymentCustomization = config.Customize.Other[deploymentName]
+		}
+	}
+	
+	if deploymentCustomization != nil {
+		// Look for deployment-level envVars directly under "envVars" key (StackRox pattern)
+		if deploymentEnvVars := getEnvVarsFromInterface(deploymentCustomization.EnvVars["envVars"]); deploymentEnvVars != nil {
+			for _, envVar := range deploymentEnvVars {
+				if isValidEnvVarName(envVar.Name) {
+					envVarMap[envVar.Name] = envVar
+				}
+			}
+		}
+		
+		// 3. Add container-specific env vars (following StackRox /containerName pattern)
+		containerKey := "/" + containerName
+		if containerEnvVars := getEnvVarsFromInterface(deploymentCustomization.EnvVars[containerKey]); containerEnvVars != nil {
+			for _, envVar := range containerEnvVars {
+				if isValidEnvVarName(envVar.Name) {
+					envVarMap[envVar.Name] = envVar
+				}
 			}
 		}
 	}
 
-	// 4. Add container-specific env vars
-	if containerVars, exists := config.EnvVars.Containers[containerName]; exists {
-		for _, envVar := range containerVars {
-			if isValidEnvVarName(envVar.Name) {
-				envVarMap[envVar.Name] = envVar
-			}
-		}
-	}
-
-	// 5. Add existing env vars (highest precedence)
+	// 4. Add existing env vars (highest precedence)
 	for _, envVar := range existing {
 		envVarMap[envVar.Name] = envVar
 	}
@@ -480,4 +497,84 @@ func isValidEnvVarName(name string) bool {
 	}
 
 	return true
+}
+
+// getEnvVarsFromInterface extracts environment variables from interface{} data
+func getEnvVarsFromInterface(data interface{}) []v1.EnvVar {
+	if data == nil {
+		return nil
+	}
+	
+	if envVarList, ok := data.([]interface{}); ok {
+		return convertToEnvVars(envVarList)
+	}
+	
+	return nil
+}
+
+// convertToEnvVars converts interface{} slice to []v1.EnvVar
+func convertToEnvVars(envVarList []interface{}) []v1.EnvVar {
+	var result []v1.EnvVar
+	
+	for _, item := range envVarList {
+		if envVarMap, ok := item.(map[string]interface{}); ok {
+			var envVar v1.EnvVar
+			
+			if name, exists := envVarMap["name"]; exists {
+				if nameStr, ok := name.(string); ok {
+					envVar.Name = nameStr
+				}
+			}
+			
+			if value, exists := envVarMap["value"]; exists {
+				if valueStr, ok := value.(string); ok {
+					envVar.Value = valueStr
+				}
+			}
+			
+			// Handle valueFrom if present
+			if valueFrom, exists := envVarMap["valueFrom"]; exists {
+				if valueFromMap, ok := valueFrom.(map[string]interface{}); ok {
+					envVar.ValueFrom = convertToEnvVarSource(valueFromMap)
+				}
+			}
+			
+			if envVar.Name != "" {
+				result = append(result, envVar)
+			}
+		}
+	}
+	
+	return result
+}
+
+// convertToEnvVarSource converts map to v1.EnvVarSource
+func convertToEnvVarSource(valueFromMap map[string]interface{}) *v1.EnvVarSource {
+	source := &v1.EnvVarSource{}
+	
+	if fieldRef, exists := valueFromMap["fieldRef"]; exists {
+		if fieldRefMap, ok := fieldRef.(map[string]interface{}); ok {
+			if fieldPath, exists := fieldRefMap["fieldPath"]; exists {
+				if fieldPathStr, ok := fieldPath.(string); ok {
+					source.FieldRef = &v1.ObjectFieldSelector{
+						FieldPath: fieldPathStr,
+					}
+				}
+			}
+		}
+	}
+	
+	if resourceFieldRef, exists := valueFromMap["resourceFieldRef"]; exists {
+		if resourceFieldRefMap, ok := resourceFieldRef.(map[string]interface{}); ok {
+			if resource, exists := resourceFieldRefMap["resource"]; exists {
+				if resourceStr, ok := resource.(string); ok {
+					source.ResourceFieldRef = &v1.ResourceFieldSelector{
+						Resource: resourceStr,
+					}
+				}
+			}
+		}
+	}
+	
+	return source
 }

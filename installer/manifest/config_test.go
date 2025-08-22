@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 	"path/filepath"
-	v1 "k8s.io/api/core/v1"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -17,11 +16,9 @@ func TestDefaultConfig(t *testing.T) {
 		ApplyNetworkPolicies: false,
 		CertPath:             "./certs",
 		ImageArchitecture:    "single",
-		EnvVars: EnvVarConfig{
-			Global:     []v1.EnvVar{},
-			Generators: make(map[string][]v1.EnvVar),
-			Pods:       make(map[string][]v1.EnvVar),
-			Containers: make(map[string][]v1.EnvVar),
+		Customize: CustomizeConfig{
+			EnvVars: []interface{}{},
+			Other:   make(map[string]*DeploymentCustomization),
 		},
 		Images: Images{
 			AdmissionControl: localStackroxImage,
