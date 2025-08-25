@@ -111,7 +111,7 @@ func (g AdmissionControlGenerator) applyAdmissionControlDeployment(m *manifestGe
 	trueVar := true
 	falseVar := false
 
-	envVars := []v1.EnvVar{
+	admissionControlEnvVars := []v1.EnvVar{
 		{
 			Name: "ROX_MEMLIMIT",
 			ValueFrom: &v1.EnvVarSource{
@@ -178,6 +178,7 @@ func (g AdmissionControlGenerator) applyAdmissionControlDeployment(m *manifestGe
 							"--new=/run/secrets/stackrox.io/certs-new/",
 							"--destination=/run/secrets/stackrox.io/certs/",
 						},
+						Env: GetEnvVarsForContainer(m.Config, "admission_control", "admission-control", "init-tls-certs", []v1.EnvVar{}),
 					}},
 					Containers: []v1.Container{{
 						Name:            "admission-control",
@@ -205,7 +206,7 @@ func (g AdmissionControlGenerator) applyAdmissionControlDeployment(m *manifestGe
 							ReadOnlyRootFilesystem:   &trueVar,
 							AllowPrivilegeEscalation: &falseVar,
 						},
-						Env: envVars,
+						Env: GetEnvVarsForContainer(m.Config, "admission_control", "admission-control", "admission-control", admissionControlEnvVars),
 					}},
 				},
 			},

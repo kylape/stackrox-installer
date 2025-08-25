@@ -152,7 +152,7 @@ func (g CentralDBGenerator) createCentralDbDeployment(m *manifestGenerator) Reso
 							ContainerPort: 5432,
 							Protocol:      v1.ProtocolTCP,
 						}},
-						Env: []v1.EnvVar{
+						Env: GetEnvVarsForContainer(m.Config, "central_db", "central-db", "central-db", []v1.EnvVar{
 							{
 								Name:  "POSTGRES_HOST_AUTH_METHOD",
 								Value: "password",
@@ -161,19 +161,19 @@ func (g CentralDBGenerator) createCentralDbDeployment(m *manifestGenerator) Reso
 								Name:  "PGDATA",
 								Value: "/var/lib/postgresql/data/pgdata",
 							},
-						},
+						}),
 					}},
 					InitContainers: []v1.Container{{
 						Name:            "init-db",
 						Image:           m.Config.Images.CentralDB,
 						Command:         []string{"init-entrypoint.sh"},
 						SecurityContext: RestrictedSecurityContext(PostgresUser),
-						Env: []v1.EnvVar{
+						Env: GetEnvVarsForContainer(m.Config, "central_db", "central-db", "init-db", []v1.EnvVar{
 							{
 								Name:  "PGDATA",
 								Value: "/var/lib/postgresql/data/pgdata",
 							},
-						},
+						}),
 						VolumeMounts: []v1.VolumeMount{
 							{
 								Name:      "disk",

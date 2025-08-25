@@ -15,16 +15,30 @@ const (
 	localDbImage       = "localhost:5001/stackrox/db:latest"
 )
 
+type DeploymentCustomization struct {
+	EnvVars map[string]interface{} `yaml:"envVars"`
+}
+
+type CustomizeConfig struct {
+	EnvVars   interface{}                             `yaml:"envVars"`    // Global env vars
+	Central   *DeploymentCustomization                `yaml:"central,omitempty"`
+	Sensor    *DeploymentCustomization                `yaml:"sensor,omitempty"`
+	Collector *DeploymentCustomization                `yaml:"collector,omitempty"`
+	Scanner   *DeploymentCustomization                `yaml:"scanner,omitempty"`
+	Other     map[string]*DeploymentCustomization     `yaml:",inline"`
+}
+
 type Config struct {
-	Action               string `yaml:"action"`
-	ApplyNetworkPolicies bool   `yaml:"applyNetworkPolicies"`
-	CRS                  CRS    `yaml:"crs"`
-	CertPath             string `yaml:"certPath"`
-	DevMode              bool   `yaml:"devMode"`
-	Images               Images `yaml:"images"`
-	ImageArchitecture    string `yaml:"imageArchitecture"`
-	Namespace            string `yaml:"namespace"`
-	ScannerV4            bool   `yaml:"scannerV4"`
+	Action               string       `yaml:"action"`
+	ApplyNetworkPolicies bool         `yaml:"applyNetworkPolicies"`
+	CRS                  CRS          `yaml:"crs"`
+	CertPath             string       `yaml:"certPath"`
+	DevMode              bool         `yaml:"devMode"`
+	Customize            CustomizeConfig `yaml:"customize"`
+	Images               Images       `yaml:"images"`
+	ImageArchitecture    string       `yaml:"imageArchitecture"`
+	Namespace            string       `yaml:"namespace"`
+	ScannerV4            bool         `yaml:"scannerV4"`
 }
 
 type CRS struct {
@@ -53,6 +67,10 @@ var DefaultConfig Config = Config{
 	ApplyNetworkPolicies: false,
 	CertPath:             "./certs",
 	ImageArchitecture:    "single",
+	Customize: CustomizeConfig{
+		EnvVars: []interface{}{},
+		Other:   make(map[string]*DeploymentCustomization),
+	},
 	Images: Images{
 		AdmissionControl: localStackroxImage,
 		Sensor:           localStackroxImage,

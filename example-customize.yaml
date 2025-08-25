@@ -1,0 +1,100 @@
+namespace: stackrox
+scannerV4: true
+devMode: true
+
+# True StackRox Helm customization structure
+customize:
+  # Global environment variables applied to all containers
+  envVars:
+    - name: "DEPLOYMENT_ENV"
+      value: "production"
+    - name: "LOG_FORMAT"
+      value: "json"
+    - name: "CLUSTER_REGION"
+      value: "us-east-1"
+
+  # Central deployment customization
+  central:
+    envVars:
+      # Deployment-level env vars under "envVars" key
+      envVars:
+        - name: "CENTRAL_LOG_LEVEL"
+          value: "debug"
+        - name: "MAX_CONCURRENT_SCANS"
+          value: "10"
+        - name: "DEPLOYMENT_ENV"
+          value: "staging"  # Overrides global setting
+
+      # Container-specific env vars using /containerName keys in same map
+      "/central":
+        - name: "CENTRAL_LOG_LEVEL"
+          value: "trace"  # Overrides deployment-level setting
+        - name: "MEMORY_LIMIT"
+          valueFrom:
+            resourceFieldRef:
+              resource: "limits.memory"
+        - name: "POD_NAME"
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.name"
+
+      "/nodejs":
+        - name: "NODE_ENV"
+          value: "development"
+        - name: "PORT"
+          value: "3000"
+
+  # Sensor deployment customization  
+  sensor:
+    envVars:
+      envVars:
+        - name: "SENSOR_LOG_LEVEL"
+          value: "info"
+        - name: "COLLECTION_INTERVAL"
+          value: "30s"
+
+      "/sensor":
+        - name: "MAX_CONNECTIONS"
+          value: "1000"
+
+  # Collector DaemonSet customization
+  collector:
+    envVars:
+      envVars:
+        - name: "COLLECTOR_LOG_LEVEL"
+          value: "warn"
+
+      "/collector":
+        - name: "COLLECTION_METHOD"
+          value: "CORE_BPF"
+        - name: "ENABLE_RUNTIME_SECURITY"
+          value: "true"
+
+      "/compliance":
+        - name: "COMPLIANCE_INTERVAL"
+          value: "24h"
+
+  # Scanner deployment customization
+  scanner:
+    envVars:
+      envVars:
+        - name: "SCANNER_LOG_LEVEL"
+          value: "info"
+
+      "/scanner":
+        - name: "SCAN_TIMEOUT"
+          value: "300s"
+
+# Standard installer configuration
+images:
+  central: "quay.io/stackrox-io/main:4.5.0"
+  sensor: "quay.io/stackrox-io/main:4.5.0"
+  collector: "quay.io/stackrox-io/collector:4.5.0"
+  admissionControl: "quay.io/stackrox-io/main:4.5.0"
+  scanner: "quay.io/stackrox-io/scanner:4.5.0"
+  scannerDb: "quay.io/stackrox-io/scanner-db:4.5.0"
+  scannerv4: "quay.io/stackrox-io/scanner-v4:4.5.0"
+  scannerv4Db: "quay.io/stackrox-io/scanner-v4-db:4.5.0"
+
+crs:
+  portForward: false

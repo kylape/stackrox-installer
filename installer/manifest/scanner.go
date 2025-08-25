@@ -147,7 +147,7 @@ func (g *ScannerGenerator) genScannerDeployment(m *manifestGenerator) Resource {
 							ContainerPort: 8443,
 							Protocol:      v1.ProtocolTCP,
 						}},
-						Env: []v1.EnvVar{
+						Env: GetEnvVarsForContainer(m.Config, "scanner", "scanner", "scanner", []v1.EnvVar{
 							{
 								Name: "POD_NAMESPACE",
 								ValueFrom: &v1.EnvVarSource{
@@ -166,7 +166,7 @@ func (g *ScannerGenerator) genScannerDeployment(m *manifestGenerator) Resource {
 								Name:  "PGSSLROOTCERT",
 								Value: "/run/secrets/stackrox.io/certs/ca.pem",
 							},
-						},
+						}),
 					}},
 				},
 			},

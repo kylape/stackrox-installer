@@ -1,0 +1,66 @@
+namespace: stackrox
+scannerV4: true
+devMode: true
+crs:
+  portForward: false
+images:
+  scannerDb: "localhost:5001/stackrox/scanner-db:latest"
+  scannerv4Db: "localhost:5001/stackrox/scanner-v4-db:latest"
+  centralDb: "localhost:5001/stackrox/central-db:latest"
+  collector: "quay.io/stackrox-io/collector:3.22.0"
+  admissionControl: "quay.io/klape/stackrox:e47703c0cf"
+  sensor: "quay.io/klape/stackrox:e47703c0cf"
+  configController: "quay.io/klape/stackrox:e47703c0cf"
+  central: "quay.io/klape/stackrox:e47703c0cf"
+  scanner: "quay.io/klape/stackrox:e47703c0cf"
+  scannerv4: "quay.io/klape/stackrox:e47703c0cf"
+  vsockListener: "quay.io/klape/stackrox:e47703c0cf"
+
+# Example environment variable configuration
+envVars:
+  # Global environment variables applied to all containers
+  global:
+    - name: "DEPLOYMENT_ENV"
+      value: "test"
+    - name: "LOG_FORMAT"
+      value: "json"
+
+  # Generator-specific environment variables
+  generators:
+    central:
+      - name: "CENTRAL_LOG_LEVEL"
+        value: "debug"
+      - name: "MAX_CONCURRENT_SCANS"
+        value: "10"
+    sensor:
+      - name: "SENSOR_LOG_LEVEL"
+        value: "info"
+      - name: "COLLECTION_INTERVAL"
+        value: "30s"
+    admission_control:
+      - name: "ADMISSION_LOG_LEVEL"
+        value: "warn"
+
+  # Pod-specific environment variables
+  pods:
+    central:
+      - name: "POD_MEMORY_LIMIT"
+        value: "8Gi"
+    sensor:
+      - name: "POD_CPU_LIMIT"
+        value: "2"
+
+  # Container-specific environment variables (highest precedence)
+  containers:
+    central:
+      - name: "CENTRAL_LOG_LEVEL"  # This will override the generator setting
+        value: "trace"
+    nodejs:
+      - name: "NODE_ENV"
+        value: "development"
+    sensor:
+      - name: "MAX_CONNECTIONS"
+        value: "1000"
+    "central-db":
+      - name: "POSTGRES_MAX_CONNECTIONS"
+        value: "200"

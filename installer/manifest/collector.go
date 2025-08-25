@@ -65,7 +65,7 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 							Privileged:             &trueBool,
 							ReadOnlyRootFilesystem: &trueBool,
 						},
-						Env: []v1.EnvVar{{
+						Env: GetEnvVarsForContainer(m.Config, "collector", "collector", "collector", []v1.EnvVar{{
 							Name:  "COLLECTOR_CONFIG",
 							Value: `{"tlsConfig":{"caCertPath":"/var/run/secrets/stackrox.io/certs/ca.pem","clientCertPath":"/var/run/secrets/stackrox.io/certs/cert.pem","clientKeyPath":"/var/run/secrets/stackrox.io/certs/key.pem"}}`,
 						}, {
@@ -80,7 +80,7 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 						}, {
 							Name:  "ROX_COLLECTOR_RUNTIME_FILTERS_ENABLED",
 							Value: "true",
-						}},
+						}}),
 						VolumeMounts: []v1.VolumeMount{{
 							Name:             "proc-ro",
 							MountPath:        "/host/proc",
@@ -203,13 +203,13 @@ func (g CollectorGenerator) genDaemonSet(m *manifestGenerator) Resource {
 							Privileged:             &trueBool,
 							ReadOnlyRootFilesystem: &trueBool,
 						},
-						Env: []v1.EnvVar{{
+						Env: GetEnvVarsForContainer(m.Config, "collector", "collector", "vsock-listener", []v1.EnvVar{{
 							Name:  "SENSOR_ENDPOINT",
 							Value: fmt.Sprintf("sensor.%s.svc", m.Config.Namespace),
 						}, {
 							Name:  "VSOCK_PORT",
 							Value: "514",
-						}},
+						}}),
 						VolumeMounts: []v1.VolumeMount{{
 							Name:      "certs",
 							MountPath: "/run/secrets/stackrox.io/certs",
