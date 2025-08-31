@@ -183,12 +183,9 @@ func (g *ScannerV4Generator) genScannerV4Deployment(name string, replicaCount in
 						},
 					}},
 					Containers: []v1.Container{{
-						Name:  name,
-						Image: m.Config.Images.ScannerV4,
-						Command: []string{
-							scannerV4BinaryPath(m.Config),
-							"--conf=/etc/scanner/config.yaml",
-						},
+						Name:    name,
+						Image:   m.Config.Images.ScannerV4,
+						Command: hotloadCommand(fmt.Sprintf("%s --conf=/etc/scanner/config.yaml", scannerV4BinaryPath(m.Config)), m.Config),
 						Ports: []v1.ContainerPort{{
 							Name:          "https",
 							ContainerPort: 8080,
@@ -198,7 +195,7 @@ func (g *ScannerV4Generator) genScannerV4Deployment(name string, replicaCount in
 							ContainerPort: 8443,
 							Protocol:      v1.ProtocolTCP,
 						}},
-						Env: []v1.EnvVar{
+						Env: GetEnvVarsForContainer(m.Config, fmt.Sprintf("scanner-v4-%s", name), fmt.Sprintf("scanner-v4-%s", name), name, []v1.EnvVar{
 							{
 								Name: "POD_NAMESPACE",
 								ValueFrom: &v1.EnvVarSource{
@@ -217,7 +214,7 @@ func (g *ScannerV4Generator) genScannerV4Deployment(name string, replicaCount in
 								Name:  "PGSSLROOTCERT",
 								Value: "/run/secrets/stackrox.io/certs/ca.pem",
 							},
-						},
+						}),
 					}},
 				},
 			},

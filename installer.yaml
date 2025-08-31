@@ -8,11 +8,26 @@ images:
   scannerv4Db: "localhost:5001/stackrox/scanner-v4-db:latest"
   centralDb: "localhost:5001/stackrox/central-db:latest"
   collector: "quay.io/stackrox-io/collector:3.22.0"
-  compliance: "quay.io/klape/stackrox:efe635b"
-  admissionControl: "quay.io/klape/stackrox:efe635b"
-  sensor: "quay.io/klape/stackrox:efe635b"
-  configController: "quay.io/klape/stackrox:efe635b"
-  central: "quay.io/klape/stackrox:efe635b"
-  scanner: "quay.io/klape/stackrox:efe635b"
-  scannerv4: "quay.io/klape/stackrox:efe635b"
-  vsockListener: "quay.io/klape/stackrox:efe635b"
+  compliance: "localhost:5001/stackrox/stackrox:6046c8a"
+  admissionControl: "localhost:5001/stackrox/stackrox:6046c8a"
+  sensor: "localhost:5001/stackrox/stackrox:6046c8a"
+  configController: "localhost:5001/stackrox/stackrox:6046c8a"
+  central: "localhost:5001/stackrox/stackrox:6046c8a"
+  scanner: "localhost:5001/stackrox/stackrox:6046c8a"
+  scannerv4: "localhost:5001/stackrox/stackrox:6046c8a"
+  vsockListener: "localhost:5001/stackrox/stackrox:6046c8a"
+customize:
+  sensor:
+    envVars:
+      envVars:
+      - name: "LOGLEVEL"
+        value: "debug"
+      - name: "ROX_VIRTUAL_MACHINES"
+        value: "true"
+  central:
+    envVars:
+      envVars:
+      - name: "LOGLEVEL"
+        value: "debug"
+      - name: "ROX_VIRTUAL_MACHINES"
+        value: "true"
