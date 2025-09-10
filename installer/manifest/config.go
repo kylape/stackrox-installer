@@ -53,6 +53,7 @@ type Images struct {
 	ConfigController string `yaml:"configController"`
 	Central          string `yaml:"central"`
 	CentralDB        string `yaml:"centralDb"`
+	CentralProxy     string `yaml:"centralProxy"`
 	Scanner          string `yaml:"scanner"`
 	ScannerDB        string `yaml:"scannerDb"`
 	ScannerV4        string `yaml:"scannerv4"`
@@ -78,6 +79,7 @@ var DefaultConfig Config = Config{
 		Compliance:       localStackroxImage,
 		ConfigController: localStackroxImage,
 		Central:          localStackroxImage,
+		CentralProxy:     localStackroxImage,
 		Scanner:          localStackroxImage,
 		ScannerV4:        localStackroxImage,
 		VSOCKListener:    localStackroxImage,
